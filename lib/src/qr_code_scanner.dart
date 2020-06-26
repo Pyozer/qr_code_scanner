@@ -7,17 +7,14 @@ import 'package:flutter/services.dart';
 typedef QRViewCreatedCallback = void Function(QRViewController);
 
 class QRView extends StatefulWidget {
+  final QRViewCreatedCallback onQRViewCreated;
+  final ShapeBorder overlay;
+
   const QRView({
-    @required Key key,
+    Key key,
     @required this.onQRViewCreated,
     this.overlay,
-  })  : assert(key != null),
-        assert(onQRViewCreated != null),
-        super(key: key);
-
-  final QRViewCreatedCallback onQRViewCreated;
-
-  final ShapeBorder overlay;
+  })  : super(key: key);
 
   @override
   State<StatefulWidget> createState() => _QRViewState();
@@ -26,17 +23,18 @@ class QRView extends StatefulWidget {
 class _QRViewState extends State<QRView> {
   @override
   Widget build(BuildContext context) {
+    if (widget.overlay == null) {
+      return _getPlatformQrView();
+    }
+
     return Stack(
       children: [
         _getPlatformQrView(),
-        if (widget.overlay != null)
-          Container(
-            decoration: ShapeDecoration(
-              shape: widget.overlay,
-            ),
-          )
-        else
-          Container(),
+        Container(
+          decoration: ShapeDecoration(
+            shape: widget.overlay,
+          ),
+        ),
       ],
     );
   }
@@ -60,7 +58,8 @@ class _QRViewState extends State<QRView> {
         break;
       default:
         throw UnsupportedError(
-            "Trying to use the default webview implementation for $defaultTargetPlatform but there isn't a default one");
+          "Trying to use the default webview implementation for $defaultTargetPlatform but there isn't a default one",
+        );
     }
     return _platformQrView;
   }
@@ -77,10 +76,7 @@ class _CreationParams {
   _CreationParams({this.width, this.height});
 
   static _CreationParams fromWidget(double width, double height) {
-    return _CreationParams(
-      width: width,
-      height: height,
-    );
+    return _CreationParams(width: width, height: height);
   }
 
   final double width;
@@ -99,8 +95,10 @@ class QRViewController {
       : _channel = MethodChannel('net.touchcapture.qr.flutterqr/qrview_$id') {
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       final RenderBox renderBox = qrKey.currentContext.findRenderObject();
-      _channel.invokeMethod('setDimensions',
-          {'width': renderBox.size.width, 'height': renderBox.size.height});
+      _channel.invokeMethod(
+        'setDimensions',
+        {'width': renderBox.size.width, 'height': renderBox.size.height},
+      );
     }
     _channel.setMethodCallHandler(
       (call) async {
